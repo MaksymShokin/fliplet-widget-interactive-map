@@ -90,31 +90,36 @@
 /*!***********************************!*\
   !*** ./js/interface/map-panel.js ***!
   \***********************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
+/*! no exports provided */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _babel_runtime_helpers_defineProperty__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @babel/runtime/helpers/defineProperty */ "./node_modules/@babel/runtime/helpers/defineProperty.js");
+/* harmony import */ var _babel_runtime_helpers_defineProperty__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_babel_runtime_helpers_defineProperty__WEBPACK_IMPORTED_MODULE_0__);
 
 Fliplet.InteractiveMap.component('map-panel', {
   componentName: 'Map Panel',
   props: {
     id: {
       type: String,
-      default: ''
+      "default": ''
     },
     name: {
       type: String,
-      default: ''
+      "default": ''
     },
     image: {
       type: Object,
-      default: undefined
+      "default": undefined
     },
     type: {
       type: String,
-      default: 'map-panel'
+      "default": 'map-panel'
     },
     isFromNew: {
       type: Boolean,
-      default: true
+      "default": true
     }
   },
   methods: {
@@ -128,8 +133,51 @@ Fliplet.InteractiveMap.component('map-panel', {
       }
     },
     openMapPicker: function openMapPicker() {
+      var _this2 = this;
+
       var _this = this;
 
+      var appId = _.keys(__widgetData)[0];
+
+      var dataSourceId = __widgetData[appId].data.markersDataSourceId;
+      var dataSourceConnection;
+      var decidedToKeepMarkers = false;
+      var imageWidth;
+      var imageHeight;
+      Fliplet.DataSources.connect(dataSourceId).then(function (connection) {
+        dataSourceConnection = connection;
+        connection.find({
+          where: _babel_runtime_helpers_defineProperty__WEBPACK_IMPORTED_MODULE_0___default()({}, 'Map name', _this.name)
+        }).then(function (records) {
+          if (records.length) {
+            Fliplet.Modal.confirm({
+              title: 'Change image',
+              message: 'Do you want to keep the existing markers?',
+              buttons: {
+                confirm: {
+                  label: 'Keep the markers',
+                  className: 'btn-success'
+                },
+                cancel: {
+                  label: 'Delete the markers',
+                  className: 'btn-danger'
+                }
+              }
+            }).then(function (result) {
+              if (result) {
+                imageWidth = _this.image.size[0];
+                imageHeight = _this.image.size[1];
+                decidedToKeepMarkers = true;
+              } else {
+                records.forEach(function (elem) {
+                  dataSourceConnection.removeById(elem.id);
+                });
+                Fliplet.Studio.emit('reload-widget-instance', appId);
+              }
+            });
+          }
+        });
+      });
       Fliplet.Widget.toggleCancelButton(false);
       var filePickerData = {
         selectFiles: this.image ? [this.image] : [],
@@ -153,6 +201,31 @@ Fliplet.InteractiveMap.component('map-panel', {
         }
       });
       window.filePickerProvider.then(function (result) {
+        if (decidedToKeepMarkers) {
+          var newImageWidth = result.data[0].size[0];
+          var newImageHeight = result.data[0].size[1];
+
+          if (newImageWidth !== imageWidth && newImageHeight !== imageHeight) {
+            var widthRatioDifference = newImageWidth / imageWidth;
+            var heightRatioDifference = newImageHeight / imageHeight;
+            dataSourceConnection.find().then(function (records) {
+              var entries = records.map(function (elem) {
+                if (elem.data['Map name'] === _this.name) {
+                  elem.data['Position X'] *= widthRatioDifference;
+                  elem.data['Position Y'] *= heightRatioDifference;
+                }
+
+                return elem;
+              });
+
+              var columns = _.keys(records[0].data);
+
+              dataSourceConnection.commit(entries, columns);
+            });
+            Fliplet.Studio.emit('reload-widget-instance', appId);
+          }
+        }
+
         Fliplet.Widget.toggleCancelButton(true);
         var imageUrl = result.data[0].url;
         var pattern = /[?&]size=/;
@@ -163,9 +236,9 @@ Fliplet.InteractiveMap.component('map-panel', {
         }
 
         result.data[0].url = imageUrl;
-        _this.image = result.data[0];
+        _this2.image = result.data[0];
 
-        _this.onInputData(true);
+        _this2.onInputData(true);
 
         window.filePickerProvider = null;
         Fliplet.Studio.emit('widget-save-label-reset');
@@ -197,6 +270,32 @@ Fliplet.Widget.onCancelRequest(function () {
 
 /***/ }),
 
+/***/ "./node_modules/@babel/runtime/helpers/defineProperty.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/@babel/runtime/helpers/defineProperty.js ***!
+  \***************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+function _defineProperty(obj, key, value) {
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
+
+  return obj;
+}
+
+module.exports = _defineProperty;
+
+/***/ }),
+
 /***/ 4:
 /*!*****************************************!*\
   !*** multi ./js/interface/map-panel.js ***!
@@ -204,7 +303,8 @@ Fliplet.Widget.onCancelRequest(function () {
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__(/*! /Users/twu/Sites/fliplet/widgets/fliplet-widget-interactive-map/js/interface/map-panel.js */"./js/interface/map-panel.js");
+module.exports = __webpack_require__(/*! /Users/maksym/Desktop/Upplabs/Fliplet/interactive graphics/fliplet-widget-interactive-map/js/interface/map-panel.js */"./js/interface/map-panel.js");
+
 
 /***/ })
 
