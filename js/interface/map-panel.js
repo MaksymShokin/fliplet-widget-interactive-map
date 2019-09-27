@@ -22,7 +22,50 @@ Fliplet.InteractiveMap.component('map-panel', {
       default: true
     }
   },
+  data() {
+    return {
+      updateDebounced: _.debounce(this.updateDataSource, 1000),
+      appId: _.keys(__widgetData)[0],
+      dataSourceId: undefined,
+      entries: undefined,
+      columns: undefined,
+      dataSourceConnection: undefined,
+      decidedToKeepMarkers: false,
+      imageWidth: undefined,
+      imageHeight: undefined,
+      oldMapName: ''
+    }
+  },
   methods: {
+    saveToDataSource() {
+      this.dataSourceConnection.commit(this.entries, this.columns)
+      this.oldMapName = this.name
+      Fliplet.Studio.emit('reload-widget-instance', this.appId)
+    },
+    getMapName() {
+      this.oldMapName = this.name
+    },
+    updateDataSource() {
+      this.dataSourceId = __widgetData[this.appId].data.markersDataSourceId
+
+      Fliplet.DataSources.connect(this.dataSourceId).then(connection => {
+        this.dataSourceConnection = connection
+        connection.find({where: {['Map name']: this.oldMapName}}).then(records => {
+          if (records.length) {
+            this.dataSourceConnection.find().then(records => {
+              records.forEach((elem, index, array) => {
+                if (elem.data['Map name'] === this.oldMapName) {
+                  array[index].data['Map name'] = this.name
+                }
+              });
+              this.entries = records
+              this.columns = _.keys(records[0].data)
+              this.saveToDataSource()
+            })
+          }
+        })
+      })
+    },
     onInputData(imageSaved) {
       const componentData = _.pick(this, ['id', 'name', 'image', 'type', 'isFromNew'])
       Fliplet.InteractiveMap.emit('map-panel-settings-changed', componentData)
@@ -31,6 +74,41 @@ Fliplet.InteractiveMap.component('map-panel', {
       }
     },
     openMapPicker() {
+      this.dataSourceId = __widgetData[this.appId].data.markersDataSourceId
+
+      Fliplet.DataSources.connect(this.dataSourceId).then(connection => {
+        this.dataSourceConnection = connection
+        connection.find({where: {['Map name']: this.name}}).then(records => {
+          if (records.length) {
+            Fliplet.Modal.confirm({
+              title: 'Change image',
+              message: 'Do you want to keep the existing markers?',
+              buttons: {
+                confirm: {
+                  label: 'Keep the markers',
+                  className: 'btn-success'
+                },
+                cancel: {
+                  label: 'Delete the markers',
+                  className: 'btn-danger'
+                }
+              }
+            }).then(result => {
+              if (result) {
+                this.imageWidth = this.image.size[0]
+                this.imageHeight = this.image.size[1]
+                this.decidedToKeepMarkers = true
+              } else {
+                records.forEach(elem => {
+                  this.dataSourceConnection.removeById(elem.id)
+                })
+                Fliplet.Studio.emit('reload-widget-instance', this.appId)
+              }
+            })
+          }
+        })
+      })
+
       Fliplet.Widget.toggleCancelButton(false)
 
       const filePickerData = {
@@ -56,7 +134,29 @@ Fliplet.InteractiveMap.component('map-panel', {
         }
       })
 
-      window.filePickerProvider.then((result) => {
+      window.filePickerProvider.then(result => {
+        if (this.decidedToKeepMarkers) {
+          let newImageWidth = result.data[0].size[0]
+          let newImageHeight = result.data[0].size[1]
+
+          if (newImageWidth !== this.imageWidth && newImageHeight !== this.imageHeight) {
+            let widthRatioDifference = newImageWidth/this.imageWidth
+            let heightRatioDifference = newImageHeight/this.imageHeight
+
+            this.dataSourceConnection.find().then(records => {
+              records.forEach((elem, index, array) => {
+                if (elem.data['Map name'] === this.name) {
+                  array[index].data['Position X'] *= widthRatioDifference
+                  array[index].data['Position Y'] *= heightRatioDifference
+                }
+              })
+              this.entries = records
+              this.columns = _.keys(records[0].data)
+              this.saveToDataSource()
+            })
+          }
+        }
+
         Fliplet.Widget.toggleCancelButton(true)
         let imageUrl = result.data[0].url
         const pattern = /[?&]size=/
