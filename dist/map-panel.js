@@ -125,12 +125,12 @@ Fliplet.InteractiveMap.component('map-panel', {
   data: function data() {
     return {
       updateDebounced: _.debounce(this.updateDataSource, 1000),
-      appId: _.keys(__widgetData)[0],
-      dataSourceId: undefined,
+      appId: Fliplet.Widget.getDefaultId(),
+      dataSourceId: Fliplet.Widget.getData().markersDataSourceId,
       entries: undefined,
       columns: undefined,
       dataSourceConnection: undefined,
-      decidedToKeepMarkers: false,
+      shouldKeepMarkers: false,
       imageWidth: undefined,
       imageHeight: undefined,
       oldMapName: ''
@@ -148,25 +148,26 @@ Fliplet.InteractiveMap.component('map-panel', {
     updateDataSource: function updateDataSource() {
       var _this = this;
 
-      this.dataSourceId = __widgetData[this.appId].data.markersDataSourceId;
       Fliplet.DataSources.connect(this.dataSourceId).then(function (connection) {
         _this.dataSourceConnection = connection;
         connection.find({
           where: _babel_runtime_helpers_defineProperty__WEBPACK_IMPORTED_MODULE_0___default()({}, 'Map name', _this.oldMapName)
         }).then(function (records) {
-          if (records.length) {
-            _this.dataSourceConnection.find().then(function (records) {
-              records.forEach(function (elem, index, array) {
-                if (elem.data['Map name'] === _this.oldMapName) {
-                  array[index].data['Map name'] = _this.name;
-                }
-              });
-              _this.entries = records;
-              _this.columns = _.keys(records[0].data);
-
-              _this.saveToDataSource();
-            });
+          if (!records.length) {
+            return;
           }
+
+          _this.dataSourceConnection.find().then(function (records) {
+            records.forEach(function (elem, index, array) {
+              if (elem.data['Map name'] === _this.oldMapName) {
+                array[index].data['Map name'] = _this.name;
+              }
+            });
+            _this.entries = records;
+            _this.columns = _.keys(records[0].data);
+
+            _this.saveToDataSource();
+          });
         });
       });
     },
@@ -182,7 +183,6 @@ Fliplet.InteractiveMap.component('map-panel', {
     openMapPicker: function openMapPicker() {
       var _this2 = this;
 
-      this.dataSourceId = __widgetData[this.appId].data.markersDataSourceId;
       Fliplet.DataSources.connect(this.dataSourceId).then(function (connection) {
         _this2.dataSourceConnection = connection;
         connection.find({
@@ -206,13 +206,14 @@ Fliplet.InteractiveMap.component('map-panel', {
               if (result) {
                 _this2.imageWidth = _this2.image.size[0];
                 _this2.imageHeight = _this2.image.size[1];
-                _this2.decidedToKeepMarkers = true;
-              } else {
-                records.forEach(function (elem) {
-                  _this2.dataSourceConnection.removeById(elem.id);
-                });
-                Fliplet.Studio.emit('reload-widget-instance', _this2.appId);
+                _this2.shouldKeepMarkers = true;
+                return;
               }
+
+              records.forEach(function (elem) {
+                _this2.dataSourceConnection.removeById(elem.id);
+              });
+              Fliplet.Studio.emit('reload-widget-instance', _this2.appId);
             });
           }
         });
@@ -240,7 +241,7 @@ Fliplet.InteractiveMap.component('map-panel', {
         }
       });
       window.filePickerProvider.then(function (result) {
-        if (_this2.decidedToKeepMarkers) {
+        if (_this2.shouldKeepMarkers) {
           var newImageWidth = result.data[0].size[0];
           var newImageHeight = result.data[0].size[1];
 

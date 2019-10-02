@@ -25,12 +25,12 @@ Fliplet.InteractiveMap.component('map-panel', {
   data() {
     return {
       updateDebounced: _.debounce(this.updateDataSource, 1000),
-      appId: _.keys(__widgetData)[0],
-      dataSourceId: undefined,
+      appId: Fliplet.Widget.getDefaultId(),
+      dataSourceId: Fliplet.Widget.getData().markersDataSourceId,
       entries: undefined,
       columns: undefined,
       dataSourceConnection: undefined,
-      decidedToKeepMarkers: false,
+      shouldKeepMarkers: false,
       imageWidth: undefined,
       imageHeight: undefined,
       oldMapName: ''
@@ -46,23 +46,22 @@ Fliplet.InteractiveMap.component('map-panel', {
       this.oldMapName = this.name
     },
     updateDataSource() {
-      this.dataSourceId = __widgetData[this.appId].data.markersDataSourceId
-
       Fliplet.DataSources.connect(this.dataSourceId).then(connection => {
         this.dataSourceConnection = connection
         connection.find({where: {['Map name']: this.oldMapName}}).then(records => {
-          if (records.length) {
-            this.dataSourceConnection.find().then(records => {
-              records.forEach((elem, index, array) => {
-                if (elem.data['Map name'] === this.oldMapName) {
-                  array[index].data['Map name'] = this.name
-                }
-              });
-              this.entries = records
-              this.columns = _.keys(records[0].data)
-              this.saveToDataSource()
-            })
+          if (!records.length) {
+            return
           }
+          this.dataSourceConnection.find().then(records => {
+            records.forEach((elem, index, array) => {
+              if (elem.data['Map name'] === this.oldMapName) {
+                array[index].data['Map name'] = this.name
+              }
+            });
+            this.entries = records
+            this.columns = _.keys(records[0].data)
+            this.saveToDataSource()
+          })
         })
       })
     },
@@ -74,8 +73,6 @@ Fliplet.InteractiveMap.component('map-panel', {
       }
     },
     openMapPicker() {
-      this.dataSourceId = __widgetData[this.appId].data.markersDataSourceId
-
       Fliplet.DataSources.connect(this.dataSourceId).then(connection => {
         this.dataSourceConnection = connection
         connection.find({where: {['Map name']: this.name}}).then(records => {
@@ -97,13 +94,13 @@ Fliplet.InteractiveMap.component('map-panel', {
               if (result) {
                 this.imageWidth = this.image.size[0]
                 this.imageHeight = this.image.size[1]
-                this.decidedToKeepMarkers = true
-              } else {
-                records.forEach(elem => {
-                  this.dataSourceConnection.removeById(elem.id)
-                })
-                Fliplet.Studio.emit('reload-widget-instance', this.appId)
+                this.shouldKeepMarkers = true
+                return
               }
+              records.forEach(elem => {
+                this.dataSourceConnection.removeById(elem.id)
+              })
+              Fliplet.Studio.emit('reload-widget-instance', this.appId)
             })
           }
         })
@@ -135,7 +132,7 @@ Fliplet.InteractiveMap.component('map-panel', {
       })
 
       window.filePickerProvider.then(result => {
-        if (this.decidedToKeepMarkers) {
+        if (this.shouldKeepMarkers) {
           let newImageWidth = result.data[0].size[0]
           let newImageHeight = result.data[0].size[1]
 
