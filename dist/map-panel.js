@@ -125,7 +125,7 @@ Fliplet.InteractiveMap.component('map-panel', {
   data: function data() {
     return {
       updateDebounced: _.debounce(this.updateDataSource, 1000),
-      appId: Fliplet.Widget.getDefaultId(),
+      widgetId: Fliplet.Widget.getDefaultId(),
       dataSourceId: Fliplet.Widget.getData().markersDataSourceId,
       entries: undefined,
       columns: undefined,
@@ -140,7 +140,7 @@ Fliplet.InteractiveMap.component('map-panel', {
     saveToDataSource: function saveToDataSource() {
       this.dataSourceConnection.commit(this.entries, this.columns);
       this.oldMapName = this.name;
-      Fliplet.Studio.emit('reload-widget-instance', this.appId);
+      Fliplet.Studio.emit('reload-widget-instance', this.widgetId);
     },
     getMapName: function getMapName() {
       this.oldMapName = this.name;
@@ -213,7 +213,7 @@ Fliplet.InteractiveMap.component('map-panel', {
               records.forEach(function (elem) {
                 _this2.dataSourceConnection.removeById(elem.id);
               });
-              Fliplet.Studio.emit('reload-widget-instance', _this2.appId);
+              Fliplet.Studio.emit('reload-widget-instance', _this2.widgetId);
             });
           }
         });
