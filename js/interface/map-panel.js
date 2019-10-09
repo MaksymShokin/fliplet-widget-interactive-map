@@ -52,6 +52,7 @@ Fliplet.InteractiveMap.component('map-panel', {
           if (!records.length) {
             return
           }
+
           this.dataSourceConnection.find().then(records => {
             records.forEach((elem, index, array) => {
               if (elem.data['Map name'] === this.oldMapName) {
