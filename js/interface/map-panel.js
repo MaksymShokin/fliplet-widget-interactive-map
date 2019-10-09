@@ -57,7 +57,7 @@ Fliplet.InteractiveMap.component('map-panel', {
               if (elem.data['Map name'] === this.oldMapName) {
                 array[index].data['Map name'] = this.name
               }
-            });
+            })
             this.entries = records
             this.columns = _.keys(records[0].data)
             this.saveToDataSource()
