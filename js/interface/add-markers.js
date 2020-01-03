@@ -75,7 +75,12 @@ Fliplet.InteractiveMap.component('add-markers', {
       saveDebounced: _.debounce(this.saveToDataSource, 1000),
       dsConfigError: false,
       dataSourceToDelete: undefined,
-      showEditMarkerOverlay: false
+      showEditMarkerOverlay: false,
+      widgetInstanceId: Fliplet.Widget.getDefaultId(),
+      dataSourceId: Fliplet.Widget.getData().markersDataSourceId,
+      entries: undefined,
+      columns: undefined,
+      styleNames: []
     }
   },
   computed: {
@@ -314,8 +319,49 @@ Fliplet.InteractiveMap.component('add-markers', {
       })
     },
     toggleEditMarkerOverlay() {
+      if (!this.showEditMarkerOverlay) {
+        this.allMarkerStyles.forEach(elem => {
+          this.styleNames.push({'oldStyleName' : elem.name, 'newStyleName' : undefined})
+        })
+      }
+
+      if (this.showEditMarkerOverlay) {
+        for (var i = 0; i < this.styleNames.length; i++) {
+          this.styleNames[i].newStyleName = this.allMarkerStyles[i].name
+        }
+
+        Fliplet.DataSources.connect(this.dataSourceId).then(connection => {
+          this.dataSourceConnection = connection
+
+          connection.find().then(records => {
+            if (!records.length) {
+              return
+            }
+
+            records.forEach((elem, index, array) => {
+              var matchedStyleName = _.find(this.styleNames, function(style) {
+                return style.oldStyleName === elem.data['Marker style'];
+              });
+
+              if (matchedStyleName) {
+                array[index].data['Marker style'] = matchedStyleName.newStyleName
+              }
+            })
+
+            this.styleNames = []
+            this.entries = records
+            this.columns = _.keys(records[0].data)
+            this.markersData = records
+            this.mappedMarkerData = this.mapMarkerData()
+            this.dataSourceConnection.commit(this.entries, this.columns)
+            this.setupFlPanZoom()
+
+            Fliplet.Studio.emit('reload-widget-instance', this.widgetInstanceId)
+          })
+        })
+      }
+
       this.showEditMarkerOverlay = !this.showEditMarkerOverlay;
-      this.reloadData();
     },
     setupFlPanZoom() {
       const mapName = this.mappedMarkerData.length

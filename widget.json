@@ -1,6 +1,6 @@
 {
-  "name": "Interactive graphics",
-  "package": "com.fliplet.interactive-map",
+  "name": "Interactive graphics-upplabs",
+  "package": "com.fliplet.interactive-map-upplabs",
   "version": "1.0.0",
   "icon": "img/icon.png",
   "tags": ["type:component", "category:general"],
